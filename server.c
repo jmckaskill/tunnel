@@ -29,16 +29,28 @@ static void xsplice(int from, int to) {
 
 static int listen_tcp(unsigned short port) {
 	int fd;
-	struct sockaddr_in6 si;
-	memset(&si, 0, sizeof(si));
-	si.sin6_family = AF_INET6;
-	si.sin6_port = htons(port);
+	struct sockaddr_in6 si6;
+	struct sockaddr_in si4;
+	struct sockaddr* sa = (struct sockaddr*) &si6;
+	size_t salen = sizeof(si6);
+	int v6only = 0;
+
+	memset(&si6, 0, sizeof(si6));
+	si6.sin6_family = AF_INET6;
+	si6.sin6_port = htons(port);
+
+	memset(&si4, 0, sizeof(si4));
+	si4.sin_family = AF_INET;
+	si4.sin_port = htons(port);
 
 	fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-	if (fd < 0) {
-		die("socket create *:%d failed %s", port, strerror(errno));
+	if (fd < 0 || setsockopt(fd, SOL_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only))) {
+		close(fd);
+		fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+		sa = (struct sockaddr*) &si4;
+		salen = sizeof(si4);
 	}
-	if (bind(fd, (struct sockaddr*) &si, sizeof(si))) {
+	if (bind(fd, sa, salen)) {
 		die("bind to *:%d failed %s", port, strerror(errno));
 	}
 	if (listen(fd, SOMAXCONN)) {
@@ -60,7 +72,7 @@ int main(int argc, char* argv[]) {
 	port1 = strtol(argv[1], &end, 10);
 	if (*end) usage();
 
-	port2 = strtol(argv[1], &end, 10);
+	port2 = strtol(argv[2], &end, 10);
 	if (*end) usage();
 
 	fd1 = listen_tcp(port1);
