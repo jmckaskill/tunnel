@@ -128,23 +128,18 @@ static void join(int fd1, int fd2) {
 	fds[1].fd = fd2;
 
 	for (;;) {
-		fprintf(stderr, "%d: %d %d, %d: %d %d\n", fd1, b1.b, b1.e, fd2, b2.b, b2.e);
 		fds[0].events = fds[1].events = 0;
 
 		if (b1.b != b1.e) {
-			fprintf(stderr, "w2\n");
 			fds[1].events |= POLLOUT;
 		}
 		if (b2.b != b2.e) {
-			fprintf(stderr, "w1\n");
 			fds[0].events |= POLLOUT;
 		}
 		if (((b1.e + 1) % sizeof(b1.v)) != b1.b) {
-			fprintf(stderr, "r1\n");
 			fds[0].events |= POLLIN;
 		}
 		if (((b2.e + 1) % sizeof(b2.v)) != b2.b) {
-			fprintf(stderr, "r2\n");
 			fds[1].events |= POLLIN;
 		}
 
