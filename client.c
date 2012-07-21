@@ -9,6 +9,13 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <signal.h>
+
+static void sigchild(int sig) {
+	int sts;
+	wait(&sts);
+}
 
 static void usage() {
 	fprintf(stderr, "usage: ./client <server host> <server port> <backend host> <backend port>\n");
@@ -72,6 +79,8 @@ int main(int argc, char* argv[]) {
 	if (argc != 5 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
 		usage();
 	}
+
+	signal(SIGCHLD, &sigchild);
 
 	for (;;) {
 		char ready;

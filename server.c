@@ -9,6 +9,13 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <signal.h>
+
+static void sigchild(int sig) {
+	int sts;
+	wait(&sts);
+}
 
 static void die(const char* fmt, ...) {
 	va_list ap;
@@ -68,6 +75,8 @@ int main(int argc, char* argv[]) {
 	if (argc != 3 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
 		usage();
 	}
+
+	signal(SIGCHLD, &sigchild);
 
 	port1 = strtol(argv[1], &end, 10);
 	if (*end) usage();
