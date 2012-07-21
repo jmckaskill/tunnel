@@ -22,7 +22,7 @@ static int listen_tcp(unsigned short port) {
 	si4.sin_port = htons(port);
 
 	fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-	if (fd < 0 || setsockopt(fd, SOL_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only))) {
+	if (fd < 0 || setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only))) {
 		warning("IPv6 only not supported, falling back to IPv4");
 		close(fd);
 		fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -68,15 +68,10 @@ int main(int argc, char* argv[]) {
 		c1 = accept(fd1, NULL, NULL);
 
 		if (!fork()) {
-			xsplice(c1, c2);
-			exit(0);
-		}
-
-		if (!fork()) {
 			/* notify the backend that it can connect to its
 			 * backend */
 			write(c1, "\0", 1);
-			xsplice(c2, c1);
+			join(c1, c2);
 			exit(0);
 		}
 

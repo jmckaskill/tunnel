@@ -68,12 +68,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		if (!fork()) {
-			xsplice(local, remote);
-			exit(0);
-		}
-
-		if (!fork()) {
-			xsplice(remote, local);
+			join(remote, local);
 			exit(0);
 		}
 
