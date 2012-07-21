@@ -1,45 +1,8 @@
-#define _GNU_SOURCE
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <string.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <signal.h>
-
-static void sigchild(int sig) {
-	int sts;
-	wait(&sts);
-}
+#include "common.h"
 
 static void usage() {
 	fprintf(stderr, "usage: ./client <server host> <server port> <backend host> <backend port>\n");
 	exit(1);
-}
-
-static void die(const char* fmt, ...) {
-	va_list ap;
-	va_start(ap, fmt);
-	fprintf(stderr, "fatal: ");
-	vfprintf(stderr, fmt, ap);
-	exit(256);
-}
-
-static void warning(const char* fmt, ...) {
-	va_list ap;
-	va_start(ap, fmt);
-	fprintf(stderr, "warning: ");
-	vfprintf(stderr, fmt, ap);
-}
-
-static void xsplice(int from, int to) {
-	while (splice(from, NULL, to, NULL, 1024*1024*1024, SPLICE_F_MOVE | SPLICE_F_MORE) > 0) {
-	}
 }
 
 static int dial(const char* host, const char* port) {

@@ -1,59 +1,8 @@
-#define _GNU_SOURCE
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <string.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <signal.h>
-
-static void sigchild(int sig) {
-	int sts;
-	wait(&sts);
-}
-
-static void die(const char* fmt, ...) {
-	va_list ap;
-	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
-	exit(256);
-}
+#include "common.h"
 
 static void usage() {
 	fprintf(stderr, "usage: ./server <backend port> <front end port>\n");
 	exit(1);
-}
-
-static void xsplice(int from, int to) {
-	char buf[64*1024];
-	for (;;) {
-		int r,n,w;
-
-		r = read(from, buf, sizeof(buf));
-		if (r < 0 && errno == EINTR) {
-			continue;
-		} else if (r <= 0) {
-			shutdown(to, SHUT_WR);
-			return;
-		}
-
-		n = 0;
-		while (n < r) {
-			w = write(to, buf + n, r - n);
-			if (w < 0 && errno == EINTR) {
-				continue;
-			} else if (w <= 0) {
-				shutdown(from, SHUT_RD);
-				return;
-			}
-			n += w;
-		}
-	}
 }
 
 static int listen_tcp(unsigned short port) {
@@ -74,6 +23,7 @@ static int listen_tcp(unsigned short port) {
 
 	fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 	if (fd < 0 || setsockopt(fd, SOL_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only))) {
+		warning("IPv6 only not supported, falling back to IPv4");
 		close(fd);
 		fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		sa = (struct sockaddr*) &si4;
