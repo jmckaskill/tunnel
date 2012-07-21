@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
-#include <sys/select.h>
+#include <poll.h>
 
 static void sigchild(int sig) {
 	int sts;
@@ -115,46 +115,58 @@ static int do_send(int fd, struct buf* b) {
 }
 
 static void join(int fd1, int fd2) {
-	fd_set r, w;
+	struct pollfd fds[2];
 	struct buf b1, b2;
 
 	b1.b = b1.e = 0;
 	b2.b = b2.e = 0;
 
-	fcntl(fd1, F_SETFL, O_NONBLOCK);
-	fcntl(fd2, F_SETFL, O_NONBLOCK);
+	fcntl(fd1, F_SETFL, fcntl(fd1, F_GETFL) | O_NONBLOCK);
+	fcntl(fd2, F_SETFL, fcntl(fd2, F_GETFL) | O_NONBLOCK);
+
+	fds[0].fd = fd1;
+	fds[1].fd = fd2;
 
 	for (;;) {
-		FD_ZERO(&r);
-		FD_ZERO(&w);
+		fprintf(stderr, "%d: %d %d, %d: %d %d\n", fd1, b1.b, b1.e, fd2, b2.b, b2.e);
+		fds[0].events = fds[1].events = 0;
+
 		if (b1.b != b1.e) {
-			FD_SET(fd2, &w);
+			fprintf(stderr, "w2\n");
+			fds[1].events |= POLLOUT;
 		}
 		if (b2.b != b2.e) {
-			FD_SET(fd1, &w);
+			fprintf(stderr, "w1\n");
+			fds[0].events |= POLLOUT;
 		}
-		if ((b1.e + 1) % sizeof(b1.v) != b1.b) {
-			FD_SET(fd1, &r);
+		if (((b1.e + 1) % sizeof(b1.v)) != b1.b) {
+			fprintf(stderr, "r1\n");
+			fds[0].events |= POLLIN;
 		}
-		if ((b2.e + 1) % sizeof(b2.v) != b2.b) {
-			FD_SET(fd2, &r);
+		if (((b2.e + 1) % sizeof(b2.v)) != b2.b) {
+			fprintf(stderr, "r2\n");
+			fds[1].events |= POLLIN;
 		}
 
-		select(max(fd1, fd2), &r, &w, NULL, NULL);
+		poll(fds, 2, -1);
 
-		if (FD_ISSET(fd1, &r) && do_recv(fd1, &b1)) {
+		if ((fds[0].revents & POLLIN) && do_recv(fd1, &b1)) {
 			break;
 		}
 
-		if (FD_ISSET(fd2, &w) && do_send(fd2, &b1)) {
+		if ((fds[1].revents & POLLOUT) && do_send(fd2, &b1)) {
 			break;
 		}
 
-		if (FD_ISSET(fd2, &r) && do_recv(fd2, &b2)) {
+		if ((fds[1].revents & POLLIN) && do_recv(fd2, &b2)) {
 			break;
 		}
 
-		if (FD_ISSET(fd1, &w) && do_send(fd1, &b2)) {
+		if ((fds[0].revents & POLLOUT) && do_send(fd1, &b2)) {
+			break;
+		}
+
+		if ((fds[0].revents & POLLERR) || (fds[1].revents & POLLERR)) {
 			break;
 		}
 	}

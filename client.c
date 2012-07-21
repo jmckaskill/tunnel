@@ -67,10 +67,14 @@ int main(int argc, char* argv[]) {
 			goto retry;
 		}
 
+#if 0
 		if (!fork()) {
 			join(remote, local);
 			exit(0);
 		}
+#else
+		join(remote, local);
+#endif
 
 		close(local);
 		close(remote);
