@@ -165,7 +165,4 @@ static void join(int fd1, int fd2) {
 			break;
 		}
 	}
-
-	shutdown(fd1, SHUT_RDWR);
-	shutdown(fd2, SHUT_RDWR);
 }
